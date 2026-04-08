@@ -2,6 +2,14 @@ import { useEffect, useState } from "react";
 import api from "./api/axios";
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    localStorage.getItem("admin_token") === "admin-logado"
+  );
+
+  const [adminUsername, setAdminUsername] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+
   const [activeTab, setActiveTab] = useState("users");
 
   const [users, setUsers] = useState([]);
@@ -30,6 +38,30 @@ function App() {
   const [productPrice, setProductPrice] = useState("");
   const [requiredVersion, setRequiredVersion] = useState("1.0.0");
   const [isActive, setIsActive] = useState(true);
+
+  async function handleAdminLogin(e) {
+    e.preventDefault();
+    setLoginError("");
+
+    try {
+      const response = await api.post("/Admin/login", {
+        username: adminUsername,
+        password: adminPassword,
+      });
+
+      if (response.data.success) {
+        localStorage.setItem("admin_token", response.data.token);
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      setLoginError(error?.response?.data?.error || "Erro ao fazer login");
+    }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("admin_token");
+    setIsAuthenticated(false);
+  }
 
   async function loadUsers() {
     try {
@@ -81,8 +113,10 @@ function App() {
   }
 
   useEffect(() => {
-    reloadAll();
-  }, []);
+    if (isAuthenticated) {
+      reloadAll();
+    }
+  }, [isAuthenticated]);
 
   function resetForm() {
     setLogin("");
@@ -208,11 +242,53 @@ function App() {
     }
   }
 
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black text-white">
+        <form
+          onSubmit={handleAdminLogin}
+          className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-8 shadow-2xl"
+        >
+          <h1 className="mb-6 text-3xl font-bold">Login do Painel</h1>
+
+          <input
+            value={adminUsername}
+            onChange={(e) => setAdminUsername(e.target.value)}
+            placeholder="Usuário"
+            className="mb-4 w-full rounded-md border border-zinc-800 bg-zinc-900 p-3 text-white outline-none"
+          />
+
+          <input
+            type="password"
+            value={adminPassword}
+            onChange={(e) => setAdminPassword(e.target.value)}
+            placeholder="Senha"
+            className="mb-4 w-full rounded-md border border-zinc-800 bg-zinc-900 p-3 text-white outline-none"
+          />
+
+          {loginError && (
+            <p className="mb-4 text-sm text-red-400">{loginError}</p>
+          )}
+
+          <button
+            type="submit"
+            className="w-full rounded-md bg-white py-3 font-medium text-black"
+          >
+            Entrar
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black text-white">
       <header className="flex items-center justify-between border-b border-zinc-800 px-10 py-6">
-        <h1 className="text-3xl font-bold">Auth Dashboard</h1>
-        <button className="rounded-md border border-red-900 bg-red-950 px-4 py-2 text-sm text-red-200">
+        <h1 className="text-3xl font-bold">Painel de autenticação</h1>
+        <button
+          onClick={handleLogout}
+          className="rounded-md border border-red-900 bg-red-950 px-4 py-2 text-sm text-red-200"
+        >
           Sair
         </button>
       </header>
